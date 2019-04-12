@@ -235,7 +235,7 @@ function getLFGPlayers() {
     })
 }
 
-scheduleJob('*/1 * * * ', () => {
+scheduleJob('*/10 * * * ', () => {
     getLFGPlayers();
 });
 
