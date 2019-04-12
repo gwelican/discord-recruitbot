@@ -1,33 +1,38 @@
 import * as cheerio from 'cheerio';
 import Discord, {Message, RichEmbed} from 'discord.js';
-import * as e6p from 'es6-promise';
 import fetch from 'isomorphic-fetch';
 import {scheduleJob} from 'node-schedule';
 import {combineLatest, from, Observable, of} from 'rxjs';
 import {catchError} from 'rxjs/internal/operators';
-import {getClassColor, GlobalConfig, parseCommandParameters, ParserConfig} from './helper';
-import {WowPersistance} from './Persistance';
+import {Category, CategoryConfiguration, CategoryServiceFactory, LogLevel} from 'typescript-logging';
+import {getClassColor, parseCommandParameters, ParserConfig} from './helper';
+import {WowPersistance} from './persistance';
 import {fetchRaiderio, RaiderIORank} from './raiderio';
 import {fetchWcl, WarcraftLogsRankingScore} from './warcraftlogs';
 import {fetchWowprogress, WowprogressResult} from './wowprogress';
 
 require('dotenv').config();
 
+CategoryServiceFactory.setDefaultConfiguration(new CategoryConfiguration(LogLevel.Info));
+export const log = new Category('recruitbot');
+
 const client = new Discord.Client();
 
 client.on('ready', () => {
-    console.log('Bot has started');
+    log.info('Bot started');
 });
-
-const config = new GlobalConfig();
 
 const persistance = new WowPersistance();
 
 client.on('message', (message: Message) => {
     if (message.content.match('^!stop')) {
-        config.removeConfigForChannel(message.channel.id);
+        persistance.removeConfigForChannel(message.channel.id);
         message.channel.send('Okay, I stopped the LFG feed report on this channel.');
         return
+    }
+    if (message.content.match('^!wipecache')) {
+        persistance.cleanCache();
+        message.channel.send('Cache wiped');
     }
     if (message.content.match('^!start')) {
         if (message.content.match('^!start help')) {
@@ -46,8 +51,8 @@ client.on('message', (message: Message) => {
         try {
             const parserConfig = parseCommandParameters(argv);
             parserConfig.channelId = message.channel.id;
-            config.clearPreviousConfig(message);
-            config.addConfig(parserConfig);
+            persistance.clearPreviousConfig(message);
+            persistance.addConfig(parserConfig);
             message.channel.send('Okay I will spam your channel with potential recruits, based on the following config: [' + parserConfig + ']. Btw I report every 10 minutes.');
             getLFGPlayers();
         }
@@ -59,7 +64,7 @@ client.on('message', (message: Message) => {
 
     }
     if (message.content.match(/^!fetch.+/)) {
-        console.log(message);
+        log.info(`Got fetch command: ${message.content}`)
         const [command, characterRealm, characterName] = message.content.split(/ /);
         getPlayerDetails('us', characterRealm, characterName).subscribe(
             player => {
@@ -67,11 +72,10 @@ client.on('message', (message: Message) => {
             }
         );
     }
-})
-;
+});
 
 client.on('error', e => {
-    console.error('Discord client error!', e);
+    log.error('Discord client error!', e);
 });
 
 function createProgress(progress: any): string {
@@ -93,7 +97,7 @@ function capitalize(text: string): string {
     return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-function convertPlayerToRichEmbed(name: string, realm: string, raiderio: RaiderIORank, wowprogress: WowprogressResult, region: string, wcl: WarcraftLogsRankingScore) {
+function convertPlayerToRichEmbed(name: string, realm: string, raiderio: RaiderIORank | null, wowprogress: WowprogressResult, region: string, wcl: WarcraftLogsRankingScore | null) {
     const embed = new RichEmbed()
         .setTitle(`${capitalize(name)} @ ${capitalize(realm)} - ${capitalize(raiderio !== null ? raiderio.faction : '')}`)
         .setColor(getClassColor(wowprogress.wowclass))
@@ -146,7 +150,7 @@ function getPlayerDetails(region: string, realm: string, name: string): Observab
             );
 
             characterStat.subscribe(
-                ([wowprogress, wcl, raiderio]: [WowprogressResult, WarcraftLogsRankingScore, RaiderIORank]) => {
+                ([wowprogress, wcl, raiderio]: [WowprogressResult, WarcraftLogsRankingScore | null, RaiderIORank | null]) => {
                     const embed = convertPlayerToRichEmbed(name, realm, raiderio, wowprogress, region, wcl);
                     obs.next(embed);
                 });
@@ -154,32 +158,32 @@ function getPlayerDetails(region: string, realm: string, name: string): Observab
     });
 }
 
-function shouldNotify(cfg: ParserConfig, raiderio: RaiderIORank, wowprogress: WowprogressResult) {
-    if (!cfg.faction || raiderio.faction.toLowerCase() === cfg.faction.toLowerCase()) {
-        if (!cfg.minIlvl || wowprogress.ilvl > cfg.minIlvl) {
-            if (!cfg.maxIlvl || wowprogress.ilvl < cfg.maxIlvl) {
-                if (!cfg.classes || cfg.classes.has(wowprogress.wowclass.toLocaleLowerCase())) {
-                    if (!cfg.neckLevel || cfg.neckLevel <= wowprogress.neckLevel) {
+function shouldNotify(cfg: ParserConfig, raiderio: RaiderIORank | null, wowprogress: WowprogressResult) {
+    if (cfg.faction == null || !raiderio || raiderio.faction.toLowerCase() === cfg.faction.toLowerCase()) {
+        if (cfg.minIlvl == null || wowprogress.ilvl > cfg.minIlvl) {
+            if (cfg.maxIlvl == null || wowprogress.ilvl < cfg.maxIlvl) {
+                if (cfg.classes.length == 0 || cfg.classes.includes(wowprogress.wowclass.toLowerCase())) {
+                    if (cfg.neckLevel == null || cfg.neckLevel <= wowprogress.neckLevel) {
                         return true;
                     }
                     else {
-                        console.log('neck level filter')
+                        log.debug('neck filter errored out');
                     }
                 }
                 else {
-                    console.log('class filter')
+                    log.debug('class filter errored out');
                 }
             }
             else {
-                console.log('max ilvl filter')
+                log.debug('max ilvl filter errored out');
             }
         }
         else {
-            console.log('min ilvl filter')
+            log.debug('min ilvl filter errored out');
         }
     }
     else {
-        console.log('faction filter')
+        log.debug('faction filter errored out');
     }
 }
 
@@ -188,9 +192,10 @@ export function parseLink(link: string) {
 }
 
 function getLFGPlayers() {
-    console.log('fetching LFG');
-    config.getConfigs().forEach((cfg) => {
-        console.log(`checking channel: ${cfg.channelId}`);
+    console.log(persistance.getConfigs())
+    log.info('Fetching LFG');
+    persistance.getConfigs().forEach((cfg) => {
+        log.info(`checking channel: ${cfg.channelId}`);
         const data$ = from(
             fetch('https://www.wowprogress.com/gearscore/?lfg=1&sortby=ts')
                 .then(resp => resp.ok ? resp.text() : Promise.reject(`${resp.statusText} ${resp.status}`))
@@ -199,37 +204,43 @@ function getLFGPlayers() {
         data$.subscribe(body => {
             const $ = cheerio.load(body);
             const links = $('a.character').map((i, e) => e.attribs['href']).get();
+            console.log(links);
             links.forEach(link => {
                 const [region, realm, name] = parseLink(link);
-                console.log(link);
+                log.info(link);
                 if (region.toLocaleLowerCase() === 'us') {
-                    if (!cfg.realm || cfg.realm.toLowerCase() === realm.toLowerCase()) {
+                    if (cfg.realm == null || cfg.realm.toLowerCase() === realm.toLowerCase()) {
                         const characterStat = combineLatest(
                             fetchWowprogress(region, realm, name),
                             fetchWcl(region, realm, name).pipe(catchError(err => of(null))),
                             fetchRaiderio(region, realm, name).pipe(catchError(err => of(null)))
                         );
-                        characterStat.subscribe(([wowprogress, wcl, raiderio]: [WowprogressResult, WarcraftLogsRankingScore, RaiderIORank]) => {
-                            if (!persistance.isPlayerCached(region, realm, name) && shouldNotify(cfg, raiderio, wowprogress)) {
+                        characterStat.subscribe(([wowprogress, wcl, raiderio]: [WowprogressResult, WarcraftLogsRankingScore | null, RaiderIORank | null]) => {
+                            if (!persistance.isPlayerCached(region, realm, name, cfg.channelId) && shouldNotify(cfg, raiderio, wowprogress)) {
                                 const richEmbed = convertPlayerToRichEmbed(name, realm, raiderio, wowprogress, region, wcl);
                                 (client.channels.get(cfg.channelId) as Discord.TextChannel).send(richEmbed);
-                                persistance.cache(region, realm, name);
+                                persistance.cache(region, realm, name, cfg.channelId);
                                 persistance.save();
                             }
                         });
                     }
                     else {
-                        console.log(`skipping ${link} because of realm is not ${realm}`)
+                        log.info(`skipping ${link} because of realm is not ${realm}`)
                     }
                 }
             });
+        }, (err) => {
+            log.error('Wowprogress error!', err)
         });
     })
-
 }
 
-scheduleJob('*/10 * * * ', () => {
+scheduleJob('*/1 * * * ', () => {
     getLFGPlayers();
+});
+
+scheduleJob('*/10 * * * ', () => {
+    persistance.clean();
 });
 
 getLFGPlayers();

@@ -1,4 +1,5 @@
 import {from, Observable} from 'rxjs';
+import {log} from './main';
 
 export class MythicPlusScore {
     dps: string;
@@ -35,13 +36,14 @@ export class RaiderIORank {
 
     constructor(className: string, race: string, faction: string, mythic_plus_scores: MythicPlusScore) {
         this.className = className;
+        this.race = race;
         this.faction = faction;
         this.mythicPlusScore = mythic_plus_scores;
     }
 }
 
 export function fetchRaiderio(region: string, realm: string, name: string): Observable<RaiderIORank> {
-    console.log(`https://raider.io/api/v1/characters/profile?region=${region}&realm=${realm}&name=${name}&fields=mythic_plus_scores`);
+    log.info(`https://raider.io/api/v1/characters/profile?region=${region}&realm=${realm}&name=${name}&fields=mythic_plus_scores`);
     const data$ = from(
         fetch(`https://raider.io/api/v1/characters/profile?region=${region}&realm=${realm}&name=${name}&fields=mythic_plus_scores`)
             .then(resp => resp.ok ? resp.json() : Promise.reject(`Error in raiderio: ${resp.statusText} ${resp.status}`))

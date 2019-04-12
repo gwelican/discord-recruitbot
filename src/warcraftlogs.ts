@@ -1,15 +1,16 @@
 import fetch from 'isomorphic-fetch';
 import * as _ from 'lodash';
 import {from, Observable} from 'rxjs';
+import {log} from './main';
 
 export class WclRanking {
-    spec: string;
-    encounterName: string;
-    percentile: number;
-    rank: number;
-    outOf: number;
-    difficulty: number;
-    characterID: number;
+    spec: string | null = null;
+    // encounterName: string | null = null;
+    percentile: number = 0;
+    // rank: number | null = null;
+    // outOf: number | null = null;
+    difficulty: number = 0;
+    // characterID: number | null = null;
 }
 
 export class SpecScore {
@@ -58,7 +59,7 @@ export class WarcraftLogsRankingScore {
 }
 
 export function fetchWcl(serverRegion: string, serverName: string, characterName: string): Observable<WarcraftLogsRankingScore> {
-    console.log(`http://warcraftlogs.com/v1/rankings/character/${characterName}/${serverName}/${serverRegion}?api_key=${process.env.WCL_TOKEN}`);
+    log.info(`http://warcraftlogs.com/v1/rankings/character/${characterName}/${serverName}/${serverRegion}?api_key=${process.env.WCL_TOKEN}`);
 
     const data$ = from(
         fetch(`http://warcraftlogs.com/v1/rankings/character/${characterName}/${serverName}/${serverRegion}?api_key=${process.env.WCL_TOKEN}`)
@@ -80,8 +81,8 @@ export function fetchWcl(serverRegion: string, serverName: string, characterName
                 ];
             }));
             obs.next(new WarcraftLogsRankingScore(diffSpecScore[3], diffSpecScore[4], diffSpecScore[5]));
-        }, (e) => {
-            obs.error(e);
+        }, (err) => {
+            obs.error(err);
         });
     });
 

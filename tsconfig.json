@@ -9,7 +9,7 @@
     "module": "commonjs",
     "esModuleInterop": true,
     "target": "es5",
-    "strict": false,
+    "strict": true,
     "noImplicitAny": true,
     //    "moduleResolution": "node",
     "sourceMap": false,

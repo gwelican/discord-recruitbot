@@ -1,4 +1,3 @@
-import {Message} from 'discord.js';
 import arg = require('arg');
 
 export function getClassColor(wowclass: string): string {
@@ -19,95 +18,14 @@ export function getClassColor(wowclass: string): string {
     return colors[wowclass.toLocaleLowerCase()];
 }
 
-export class GlobalConfig {
-    private configs: ParserConfig[] = []
-
-    public clearPreviousConfig(message: Message) {
-        const lastConfigIndex = this.configs.findIndex((config: ParserConfig) => config.channelId === message.channel.id);
-        console.log(this.configs);
-        if (lastConfigIndex !== -1) {
-            message.channel.send('Overriding previous configuration.');
-            this.configs.splice(lastConfigIndex, 1)
-        }
-    }
-
-    addConfig(parserConfig: ParserConfig) {
-        this.configs.push(parserConfig);
-    }
-
-    getConfigs() {
-        return this.configs;
-    }
-
-    removeConfigForChannel(id: string) {
-        this.configs = this.configs.filter((x) => x.channelId !== id)
-    }
-}
-
 export class ParserConfig {
-    private _classes: Set<String>;
-    private _minIlvl: number;
-    private _maxIlvl: number;
-    private _neckLevel: number;
-    private _realm: string;
-    private _faction: string;
-    private _channelId: string;
-
-    get classes(): Set<String> {
-        return this._classes;
-    }
-
-    set classes(value: Set<String>) {
-        this._classes = value;
-    }
-
-    get minIlvl(): number {
-        return this._minIlvl;
-    }
-
-    set minIlvl(value: number) {
-        this._minIlvl = value;
-    }
-
-    get maxIlvl(): number {
-        return this._maxIlvl;
-    }
-
-    set maxIlvl(value: number) {
-        this._maxIlvl = value;
-    }
-
-    get neckLevel(): number {
-        return this._neckLevel;
-    }
-
-    set neckLevel(value: number) {
-        this._neckLevel = value;
-    }
-
-    get realm(): string {
-        return this._realm;
-    }
-
-    set realm(value: string) {
-        this._realm = value;
-    }
-
-    get faction(): string {
-        return this._faction;
-    }
-
-    set faction(value: string) {
-        this._faction = value;
-    }
-
-    get channelId(): string {
-        return this._channelId;
-    }
-
-    set channelId(value: string) {
-        this._channelId = value;
-    }
+    classes: string[] = [];
+    minIlvl: number | null = null;
+    maxIlvl: number | null = null;
+    neckLevel: number | null = null;
+    realm: string | null = null;
+    faction: string | null = null;
+    channelId: string = '';
 
     public toString(): string {
         let output = [];
@@ -168,7 +86,8 @@ export function parseCommandParameters(argv: string[]) {
                 }
             }
         );
-        parserConfig.classes = new Set(args['--classes'].toLocaleLowerCase().split(/,/));
+
+        parserConfig.classes = args['--classes'].toLocaleLowerCase().split(/,/);
     }
     return parserConfig;
 }
