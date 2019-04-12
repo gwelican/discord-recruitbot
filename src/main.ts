@@ -11,8 +11,6 @@ import {fetchRaiderio, RaiderIORank} from './raiderio';
 import {fetchWcl, WarcraftLogsRankingScore} from './warcraftlogs';
 import {fetchWowprogress, WowprogressResult} from './wowprogress';
 
-(e6p as any).polyfill();
-
 require('dotenv').config();
 
 const client = new Discord.Client();

@@ -1,11 +1,18 @@
 {
   "compilerOptions": {
+    "lib": [
+      "es2017",
+      "es2015",
+      "dom",
+      "es6"
+    ],
     "module": "commonjs",
     "esModuleInterop": true,
-    "target": "ES2017",
+    "target": "es5",
+    "strict": false,
     "noImplicitAny": true,
-    "moduleResolution": "node",
-    "sourceMap": true,
+    //    "moduleResolution": "node",
+    "sourceMap": false,
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
@@ -16,6 +23,6 @@
     }
   },
   "include": [
-    "src/**/*"
+    "src/**.ts"
   ]
 }
