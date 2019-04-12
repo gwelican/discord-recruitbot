@@ -2,5 +2,5 @@ FROM node:alpine
 
 WORKDIR /src
 COPY . /src
-RUN npm install
+RUN yarn install
 CMD ["npm", "start"]
