@@ -67,7 +67,7 @@
     "gulp-terser": "^1.1.7",
     "gulp-tslint": "^8.1.4",
     "gulp-typescript": "^5.0.1",
-    "lodash": "^4.17.11",
+    "lodash": "^4.17.13",
     "merge2": "^1.2.3",
     "tslint": "5.14.0",
     "tslint-eslint-rules": "^5.4.0",
